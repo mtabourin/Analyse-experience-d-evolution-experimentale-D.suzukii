@@ -2,13 +2,35 @@
 
 Différents scripts pour l'analyse de données RNAseq paired-end provenant d'une expérience d'évolution expérimentale de *D.suzukii*
 
+## Données utilisées
+
+Données RNAseq d'ovaires de *D.suzukii* issues de séquençage illumina paired-end (2 * 100 pb) qui proviennent d'une expérience d'évolution expérimentale (L. Olazcuaga et al. [1]).
+Les échantillons utilisés:
+- 2 réplicats pour la G0
+- 2 réplicats d'évolution avec chacun 2 réplicats pour la G7 cerise
+- 2 réplicats d'évolution avec chacun 2 réplicats pour la G7 fraise
+
+Un fichier d'annotation du génome (gff3), un fichier multifasta des séquences nucléotidiques des contigs de *D.suzukii* et une table des gènes orthologues entre *D.melanogaster* et *D.suzukii* qui proviennent de la publication de Mathilde Paris et al.[2].
+
+Des fichiers rosettes: un fichier au format texte contenant les informations sur les ET de *D.suzukii* et un fichier au format fasta contenant les séquences nucléotidiques de ces ET ont été récupérés, à partir de la publication de Vincent Mérel et al.[3].
+
 ## Description
 
 ### Analyse de l'expression des gènes et des éléments transposables
+
+#### Création d'un fichier multifasta contenant les séquencences nucléotidiques des gènes de *D.suzukii*
+
+1. Conversion du fichier gff3 au format bed avec gff2bed (version 2.4.35)
+2. Garder que les lignes qui correspondent a un gène complet avec le script **cleaning_bed.py** (python version 3.8.5)
+3. Créer le fasta avec bedtools getfasta (version 2.21.0)
+
+Le fasta final ne contenait pas les gènes sur les contigs suivants (le chiffre entre parenthèses correspond au nombre de gènes sur le contig): 152 (10), 199 (13), 219 (2), 274 (6), 290 (2), 295 (3), 331 (1), 338 (3), 343 (3), 370 (3), 376 (7), 379 (1), 417 (5), 420 (1), 463 (10), 478 (1), 499 (1), 527 (6), 602 (2), 603 (4), 615 (3) et short-contig_355 (4).
+Sachant que 16 905 gènes sont annotés dans le fichier gff3.
+
 #### rnaseq.sh
 
-Ce script bash permet de faire un comptage des lectures par gènes et par éléments transposables.
-Pour utiliser ce script, vous devrez installer les outils suivant:
+Ce script bash permet de faire un comptage des lectures par gènes et par éléments transposables à partir de données RNAseq, d'un fichier fasta de référence et 2 fichiers rosettes (.txt et .fasta).
+Ce script utilise les outils suivant:
 - HISAT2 (version 2.2.0)
 - Samtools (version 1.10)
 - eXpress (version 1.5.1)
@@ -23,8 +45,8 @@ Il est composé de différentes parties:
 
 #### analyse_Drosophila-suzukii.R
 
-Ce script R (version 4.1.0) permet de faire l'analyse différentielle des comptages des lectures par gènes et part éléments transposables.
-Pour utiliser ce script, vous devrez installer les packages suivant:
+Ce script R (version 4.1.0) permet de faire l'analyse différentielle des comptages des lectures par gènes et part éléments transposables à partir de tables de comptages. Il permet aussi de produire des graphiques pour la visualisation.
+Ce script utilise les packages suivant:
 - DESeq2 (version 1.26.0)
 - ggplot2 (version 3.3.4)
 - ggvenn (version 0.1.8)
@@ -32,10 +54,12 @@ Pour utiliser ce script, vous devrez installer les packages suivant:
 #### gene_ontology.R
 
 Ce script permet de faire l'analyse d'enrichissement des termes G0 à partir d'un vecteur de gènes d'intéret et d'avoir une visualisation des résultats.
-Pour utiliser ce script, vous devrez installer les packages suivant:
+Ce script utilisent les packages suivant:
 - AnnotationHub (version 3.0.0)
 - clusterProfiler (version 4.0.0)
 - ggplot2 (version 3.3.4)
+
+Ce script a été utilisé avec les identifiants des gènes orthologues entre *D.melanogaster* et *D.suzukii*.
 
 ### Analyse des SNP
 
@@ -45,11 +69,28 @@ La recherche des SNPs à été faite à partir de données RNAseq avec le logici
 ./softwares/kissplice/build/bin/kissplice -r fastq1 -r fastq2 -o kissplice_out/ -d temporary/ -t 6 -v -s 2 -u
 
 ```
-#### Transcriptome de référence
+
+
+### Transcriptome de référence
 Un transcriptome de référence a été fait à partir de données RNAseq avec le logiciel Trinity 
 ```
 Trinity --seqType fq --left fastq1  --right fastq2 --CPU 6 --max_memory 30G
 ```
 ##### filtre_fasta.py
 Ce script permet à partir d'un fichier de sortie de Trinity au format fasta et d'une longueur de séquence, de créer un fichier fasta filtré avec seulement les séquences plus longues que la longueur donnée en entré.
-Nous avons choisi de garder les séquences de longueur supérieur à 300 nt. 
+Nous avons choisi de garder les séquences de longueur supérieur à 300 nt pour notre transcriptome de référence.
+
+
+## Références
+
+[1] L. Olazcuaga et al., « Adaptation and correlated fitness responses over two time scales
+in Drosophila suzukii populations evolving in different environments », Journal of
+Evolutionary Biology, vol. n/a, n o n/a, doi: 10.1111/jeb.13878.
+
+[2] M. Paris et al., « Near-chromosome level genome assembly of the fruit pest Drosophila
+suzukii using long-read sequencing », Sci Rep, vol. 10, n o 1, Art. n o 1, juill. 2020, doi:
+10.1038/s41598-020-67373-z.
+
+[3] V. Mérel et al., « The worldwide invasion of Drosophila suzukii is accompanied by a
+large increase of transposable element load and a small number of putatively adaptive
+insertions », Mol Biol Evol, doi: 10.1093/molbev/msab155.
