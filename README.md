@@ -53,7 +53,7 @@ Ce script utilise les packages suivant:
 
 #### gene_ontology.R
 
-Ce script permet de faire l'analyse d'enrichissement des termes G0 à partir d'un vecteur de gènes d'intéret et d'avoir une visualisation des résultats.
+Ce script R (version 4.1.0) permet de faire l'analyse d'enrichissement des termes G0 à partir d'un vecteur de gènes d'intéret et d'avoir une visualisation des résultats. Il permet aussi de produire des graphiques pour la visualisation.
 Ce script utilisent les packages suivant:
 - AnnotationHub (version 3.0.0)
 - clusterProfiler (version 4.0.0)
@@ -63,13 +63,50 @@ Ce script a été utilisé avec les identifiants des gènes orthologues entre *D
 
 ### Analyse des SNP
 
-#### Recherche des SNP
-La recherche des SNPs à été faite à partir de données RNAseq avec le logiciel Kisspice (version 2.5.4) avec la commande:
+La recherche des SNPs a été faite avec HISAT2 (version 2.2.0) et les outils GATK (version 4.2.0.0).
+
+#### Créer un dictionnaire de séquences pour le fasta de reférence
+Cette étape est faite avec l'outil CreateSequenceDictionary de GATK, avec la commande suivante:
 ```
-./softwares/kissplice/build/bin/kissplice -r fastq1 -r fastq2 -o kissplice_out/ -d temporary/ -t 6 -v -s 2 -u
+./softwares/gatk-4.2.0.0/gatk CreateSequenceDictionary -R Drophila-suzukii.fasta
+```
+#### Indexation du fasta de référence
+Cette étape est faite avec Samtools (version 1.10), avec la commande suivante:
+```
+samtools faidx Drosophila-suzukii.fasta
+```
+#### Alignement des lectures sur le génome de référence
+L'alignement est fait avec HISAT2 (version 2.2.0) avec la commande suivante:
+```
+HISAT2 -p 4 -x ref.index -1 R1.fastq -2 R2.fastq -S output.sam
+```
+### Conversion du fichier SAM en BAM
+La converssion est faite avec Samtools (version 1.10), avec la commande suivante:
+```
+SAMTOOLS view -bS -@ 3 file.sam" > output.bam
+```
+#### Trie des alignements par nom de requête
+Le trie est fait avec l'outil SortSam de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk SortSam -I file.bam -O output.bam -SO queryname
+```
+#### Attribuer toutes les lectures de chaque fichier à un seul nouveau groupe de lecture
+Cette étape est faite avec l'outil AddOrReplaceReadGroups de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk AddOrReplaceReadGroups -I file.bam -O output.bam -RGID name -RGLB name -RGPL ILLUMINA -RGPU name -RGSM sample
 
 ```
+#### Marquer les doublons et trier par ordre de coordonnées
+Cette étape est faite avec l'outil MarkDuplicatesSpark de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk MarkDuplicatesSpark -I file.bam -O output.bam --spark-master local[6]
+```
+#### Recherche des SNP et des INDEL
+Cette étape est faite avec l'outil HaplotypeCaller de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk HaplotypeCaller -R ref.fasta -I file.bam -O output.g.vcf.gz -ERC GVCF
 
+```
 
 ### Transcriptome de référence
 Un transcriptome de référence a été fait à partir de données RNAseq avec le logiciel Trinity 
