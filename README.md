@@ -61,9 +61,9 @@ Ce script utilisent les packages suivant:
 
 Ce script a été utilisé avec les identifiants des gènes orthologues entre *D.melanogaster* et *D.suzukii*.
 
-### Analyse des SNP
+### Recherche des variants (SNPs et INDELs)
 
-La recherche des SNPs a été faite avec HISAT2 (version 2.2.0) et les outils GATK (version 4.2.0.0).
+La recherche des variants a été faite avec HISAT2 (version 2.2.0) et les outils GATK (version 4.2.0.0).
 
 #### Créer un dictionnaire de séquences pour le fasta de reférence
 Cette étape est faite avec l'outil CreateSequenceDictionary de GATK, avec la commande suivante:
@@ -76,37 +76,110 @@ Cette étape est faite avec Samtools (version 1.10), avec la commande suivante:
 samtools faidx Drosophila-suzukii.fasta
 ```
 #### Alignement des lectures sur le génome de référence
-L'alignement est fait avec HISAT2 (version 2.2.0) avec la commande suivante:
+L'alignement est fait avec HISAT2 (version 2.2.0) pour chaque échantillon avec la commande suivante:
 ```
 HISAT2 -p 4 -x ref.index -1 R1.fastq -2 R2.fastq -S output.sam
 ```
-### Conversion du fichier SAM en BAM
-La converssion est faite avec Samtools (version 1.10), avec la commande suivante:
+#### Conversion du fichier SAM en BAM
+La converssion est faite avec Samtools (version 1.10) pour chaque échantillon, avec la commande suivante:
 ```
 SAMTOOLS view -bS -@ 3 file.sam" > output.bam
 ```
 #### Trie des alignements par nom de requête
-Le trie est fait avec l'outil SortSam de GATK, avec la commande suivante:
+Le trie est fait avec l'outil SortSam de GATK pour chaque échantillon, avec la commande suivante:
 ```
 ./softwares/gatk-4.2.0.0/gatk SortSam -I file.bam -O output.bam -SO queryname
 ```
 #### Attribuer toutes les lectures de chaque fichier à un seul nouveau groupe de lecture
-Cette étape est faite avec l'outil AddOrReplaceReadGroups de GATK, avec la commande suivante:
+Cette étape est faite avec l'outil AddOrReplaceReadGroups de GATK pour chaque échantillon, avec la commande suivante:
 ```
 ./softwares/gatk-4.2.0.0/gatk AddOrReplaceReadGroups -I file.bam -O output.bam -RGID name -RGLB name -RGPL ILLUMINA -RGPU name -RGSM sample
 
 ```
 #### Marquer les doublons et trier par ordre de coordonnées
-Cette étape est faite avec l'outil MarkDuplicatesSpark de GATK, avec la commande suivante:
+Cette étape est faite avec l'outil MarkDuplicatesSpark de GATK pour chaque échantillon, avec la commande suivante:
 ```
 ./softwares/gatk-4.2.0.0/gatk MarkDuplicatesSpark -I file.bam -O output.bam --spark-master local[6]
 ```
 #### Recherche des SNP et des INDEL
-Cette étape est faite avec l'outil HaplotypeCaller de GATK, avec la commande suivante:
+Cette étape est faite avec l'outil HaplotypeCaller de GATK pour chaque échantillon, avec la commande suivante:
 ```
 ./softwares/gatk-4.2.0.0/gatk HaplotypeCaller -R ref.fasta -I file.bam -O output.g.vcf.gz -ERC GVCF
+```
+#### Fusionner les fichiers GVCF de chaque échantillon en un seule fichier GVCF
+Cette étape est faite avec l'outil CombineGVCFs de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk CombineGVCFs -V ech1.g.vcf.gz -V ech2.g.vcf.gz -R ref.fasta -O output.g.vcf.gz
 
 ```
+#### Faire un génotypage conjoint sur le fichier contenant tous les échantillons
+Cette étape est faite avec l'outil GenotypeGVCFs de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk GenotypeGVCFs -R ref.fasta -V cohorte.g.vcf.gz -O output.vcf.gz
+
+```
+#### Filtrer les variants
+- Sélectionnez un sous-ensemble de l'ensemble d'appels SNP
+```
+./softwares/gatk-4.2.0.0/gatk SelectVariants -V file.vcf.gz -select-type SNP -O output.vcf.gz
+
+```
+- Sélectionnez un sous-ensemble de l'ensemble d'appels INDEL
+```
+./softwares/gatk-4.2.0.0/gatk SelectVariants -V file.vcf.gz -select-type INDEL -O output.vcf.gz
+
+```
+- Sélectionnez un sous-ensemble de l'ensemble d'appels MIXED
+```
+./softwares/gatk-4.2.0.0/gatk SelectVariants -V file.vcf.gz -select-type MIXED -O output.vcf.gz
+
+```
+- Filtrage en dur
+Le filtrage à été en fonction des recommandations de "GATK Best Practices" avec l'outil VAriantFiltration de GATK.
+  - Filtre sur les SNP
+  ```
+  ./softwares/gatk-4.2.0.0/gatk VariantFiltration -V file.vcf.gz -filter "QD < 2.0" --filter-name "QD2"  -filter "QUAL < 30.0" --filter-name "QUAL30"  -filter "SOR > 3.0" --filter-name "SOR3" -filter "FS > 60.0" --filter-name "FS60" -filter "MQ < 40.0" --filter-name "MQ40"  -filter "MQRankSum < -12,5" --filter-name "MQRankSum-12,5" -filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" -O output.vcf.gz
+  ```
+  - Filtre sur les INDEL
+  ```
+  ./softwares/gatk-4.2.0.0/gatk VariantFiltration -V file.vcf.gz -filter "QD < 2.0" --filter-name "QD2" -filter "QUAL < 30.0" --filter-name "QUAL30" -filter "FS > 200.0" --filter-name "FS200" -filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" -O output.vcf.gz
+  ```
+  - Filtre sur les MIXED
+  ```
+  ./softwares/gatk-4.2.0.0/gatk VariantFiltration -V file.vcf.gz -filter "QD < 2.0" --filter-name "QD2" -filter "QUAL < 30.0" --filter-name "QUAL30" -filter "FS > 200.0" --filter-name "FS200" -filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" -O output.vcf.gz
+  ```
+#### Combiner les fichiers VCF filtrés
+Cette étape est faite avec l'outil MergeVcfs de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk MergeVcfs -I SNP.vcf.gz -I INDEL.vcf.gz -I MIXED.vcf.gz -O output.vcf.gz
+```
+#### Convertir le VCF final en table
+Cette étape est faite avec l'outil VariantsToTable de GATK, avec la commande suivante:
+```
+./softwares/gatk-4.2.0.0/gatk VariantsToTable -V file.vcf.gz -F CHROM -F POS -F TYPE -F HET -F HOM.VAR -F NCALLED -GF GT -GF AD -GF PL -O output.table
+```
+Chaque ligne de cette table correspond à une variation.
+La table est composé de 6 colonnes principales:
+- CHROM: le nom du chromosome/contig/gène sur lequel la variation se trouve
+- POS: la position de la variation sur le chromosome/conti/gène
+- TYPE: le type de variation 
+- HET: nombre de génotypes hétérozygote
+- HOM-VAR: le nombre de génotypes variants homozygotes
+- NCALLED: le nombre d'échantillons appelés pour cette variation
+Ensuite pour chaque échantillon, il y a 3 colonnes:
+- ech.GT: le génotype de l'échantillon
+- ech.AD: la profondeur de chaque allèle
+- ech.PL: probabilités "normalisées" à l'echelle de Phred des génotypes possibles. Les valeurs de PL sont "normalisées" de sorte que le PL du génotype le plus probable soit 0 dans l'échelle Phred, ce ne sont donc pas des probabilités et les autres valeurs sont mises à l'échelle par rapport à ce génotype le plus probable.
+
+### Analyse des variants, script analyse_variants.R
+L'analyse des variants est faite à partir de la table créée avec GATK.
+Cette analyse est faite avec R (version 4.1.0) et le package Tidyverse (version 1.3.1).
+Ce script permet d'avoir:
+- le nombre de variant par échantillon et une visualisation
+- le nombre de positions hétérizygotes par échantillon et une visualisation
+- à partir d'une liste de gènes d'intéret (ici, une liste de gènes différentiellement exprimés):
+  - le nombre de variant par échantillon pour ces gènes et une visualisation 
+  - le nombre de positions hétérizygotes par échantillon pour ces gènes et une visualisation
 
 ### Transcriptome de référence
 Un transcriptome de référence a été fait à partir de données RNAseq avec le logiciel Trinity 
@@ -116,7 +189,6 @@ Trinity --seqType fq --left fastq1  --right fastq2 --CPU 6 --max_memory 30G
 ##### filtre_fasta.py
 Ce script permet à partir d'un fichier de sortie de Trinity au format fasta et d'une longueur de séquence, de créer un fichier fasta filtré avec seulement les séquences plus longues que la longueur donnée en entré.
 Nous avons choisi de garder les séquences de longueur supérieur à 300 nt pour notre transcriptome de référence.
-
 
 ## Références
 
