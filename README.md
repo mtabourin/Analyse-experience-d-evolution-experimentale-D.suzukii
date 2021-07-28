@@ -134,8 +134,8 @@ Cette étape est faite avec l'outil GenotypeGVCFs de GATK, avec la commande suiv
 ./softwares/gatk-4.2.0.0/gatk SelectVariants -V file.vcf.gz -select-type MIXED -O output.vcf.gz
 
 ```
-- Filtrage en dur
-Le filtrage à été en fonction des recommandations de "GATK Best Practices" avec l'outil VAriantFiltration de GATK.
+- Filtrage en dur: le filtrage à été en fonction des recommandations de "GATK Best Practices" avec l'outil VAriantFiltration de GATK.
+
   - Filtre sur les SNP
   ```
   ./softwares/gatk-4.2.0.0/gatk VariantFiltration -V file.vcf.gz -filter "QD < 2.0" --filter-name "QD2"  -filter "QUAL < 30.0" --filter-name "QUAL30"  -filter "SOR > 3.0" --filter-name "SOR3" -filter "FS > 60.0" --filter-name "FS60" -filter "MQ < 40.0" --filter-name "MQ40"  -filter "MQRankSum < -12,5" --filter-name "MQRankSum-12,5" -filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" -O output.vcf.gz
@@ -159,6 +159,7 @@ Cette étape est faite avec l'outil VariantsToTable de GATK, avec la commande su
 ./softwares/gatk-4.2.0.0/gatk VariantsToTable -V file.vcf.gz -F CHROM -F POS -F TYPE -F HET -F HOM.VAR -F NCALLED -GF GT -GF AD -GF PL -O output.table
 ```
 Chaque ligne de cette table correspond à une variation.
+
 La table est composé de 6 colonnes principales:
 - CHROM: le nom du chromosome/contig/gène sur lequel la variation se trouve
 - POS: la position de la variation sur le chromosome/conti/gène
@@ -166,6 +167,7 @@ La table est composé de 6 colonnes principales:
 - HET: nombre de génotypes hétérozygote
 - HOM-VAR: le nombre de génotypes variants homozygotes
 - NCALLED: le nombre d'échantillons appelés pour cette variation
+
 Ensuite pour chaque échantillon, il y a 3 colonnes:
 - ech.GT: le génotype de l'échantillon
 - ech.AD: la profondeur de chaque allèle
@@ -174,6 +176,7 @@ Ensuite pour chaque échantillon, il y a 3 colonnes:
 ### Analyse des variants, script analyse_variants.R
 L'analyse des variants est faite à partir de la table créée avec GATK.
 Cette analyse est faite avec R (version 4.1.0) et le package Tidyverse (version 1.3.1).
+
 Ce script permet d'avoir:
 - le nombre de variant par échantillon et une visualisation
 - le nombre de positions hétérizygotes par échantillon et une visualisation
