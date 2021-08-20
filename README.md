@@ -114,7 +114,7 @@ Cette étape est faite avec l'outil CombineGVCFs de GATK, avec la commande suiva
 ./softwares/gatk-4.2.0.0/gatk CombineGVCFs -V ech1.g.vcf.gz -V ech2.g.vcf.gz -R ref.fasta -O output.g.vcf.gz
 
 ```
-#### Faire un génotypage conjoint sur le fichier contenant tous les échantillons
+### Faire un génotypage conjoint sur le fichier contenant tous les échantillons
 Cette étape est faite avec l'outil GenotypeGVCFs de GATK, avec la commande suivante:
 ```
 ./softwares/gatk-4.2.0.0/gatk GenotypeGVCFs -R ref.fasta -V cohorte.g.vcf.gz -O output.vcf.gz
